@@ -85,15 +85,15 @@ if st.button("Run Screener"):
 
         latest_df, previous_df = analyze_cradle_setups(symbols, selected_timeframes)
 
-        if not latest_df.empty:
-            st.markdown("### 🟢 Cradle Setups (Latest Candle)")
-            st.dataframe(latest_df, use_container_width=True)
+    if not latest_df.empty:
+        st.markdown("### 🟢 Cradle Setups (Latest Candle)")
+        st.dataframe(latest_df, use_container_width=True)
 
-        if not previous_df.empty:
-            st.markdown("### 🟡 Cradle Setups (Previous Candle)")
-            st.dataframe(previous_df, use_container_width=True)
+    if not previous_df.empty:
+        st.markdown("### 🟡 Cradle Setups (Previous Candle)")
+        st.dataframe(previous_df, use_container_width=True)
 
-        if latest_df.empty and previous_df.empty:
-            st.warning("No valid Cradle setups found.")
+    if latest_df.empty and previous_df.empty:
+        st.warning("No valid Cradle setups found.")
 
-        st.success("Scan complete!")
+    st.success("Scan complete!")

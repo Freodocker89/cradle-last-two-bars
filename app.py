@@ -78,22 +78,27 @@ st.title("📊 Cradle Strategy Screener (Last Two Candle Pairs)")
 selected_timeframes = st.multiselect("Select Timeframes to Scan", TIMEFRAMES, default=['1h', '4h', '1d'])
 st.write("This screener shows valid Cradle setups detected on the last two candles.")
 
+result_placeholder = st.empty()
+placeholder = st.empty()
+
 if st.button("Run Screener"):
+    placeholder.info("Starting scan...")
     with st.spinner("Scanning Bitget markets... Please wait..."):
         markets = BITGET.load_markets()
         symbols = [s for s in markets if '/USDT:USDT' in s and markets[s]['type'] == 'swap']
 
         latest_df, previous_df = analyze_cradle_setups(symbols, selected_timeframes)
 
+    result_container = result_placeholder.container()
     if not latest_df.empty:
-        st.markdown("### 🟢 Cradle Setups (Latest Candle)")
-        st.dataframe(latest_df, use_container_width=True)
+        result_container.markdown("### 🟢 Cradle Setups (Latest Candle)")
+        result_container.dataframe(latest_df, use_container_width=True)
 
     if not previous_df.empty:
-        st.markdown("### 🟡 Cradle Setups (Previous Candle)")
-        st.dataframe(previous_df, use_container_width=True)
+        result_container.markdown("### 🟡 Cradle Setups (Previous Candle)")
+        result_container.dataframe(previous_df, use_container_width=True)
 
     if latest_df.empty and previous_df.empty:
-        st.warning("No valid Cradle setups found.")
+        result_container.warning("No valid Cradle setups found.")
 
-    st.success("Scan complete!")
+    result_container.success("Scan complete!")

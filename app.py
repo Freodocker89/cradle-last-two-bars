@@ -50,8 +50,8 @@ def analyze_cradle_setups(symbols, timeframes):
                 continue
 
             # Check last two pairs of candles
-            setup_latest = check_cradle_setup(df, -1)
-            setup_previous = check_cradle_setup(df, -2)
+            setup_latest = check_cradle_setup(df, len(df) - 1)
+            setup_previous = check_cradle_setup(df, len(df) - 2)
 
             if setup_latest:
                 recent_setups.append({
@@ -102,3 +102,4 @@ if st.button("Run Screener"):
         result_container.warning("No valid Cradle setups found.")
 
     result_container.success("Scan complete!")
+

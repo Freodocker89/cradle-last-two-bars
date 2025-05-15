@@ -43,8 +43,22 @@ def analyze_cradle_setups(symbols, timeframes):
     previous_setups = []
 
     for tf in timeframes:
+        status_line = st.empty()
+        progress_bar = st.progress(0)
+        eta_placeholder = st.empty()
+        total = len(symbols)
+        start_time = time.time()
+
         for idx, symbol in enumerate(symbols):
-            st.info(f"Scanning {symbol} on {tf} ({idx+1}/{len(symbols)})")
+            elapsed = time.time() - start_time
+            avg_time = elapsed / (idx + 1)
+            remaining_time = avg_time * (total - (idx + 1))
+            mins, secs = divmod(int(remaining_time), 60)
+
+            status_line.info(f"🔍 Scanning: {symbol} on {tf} ({idx+1}/{total})")
+            progress_bar.progress((idx + 1) / total)
+            eta_placeholder.markdown(f"⏳ Estimated time remaining: {mins}m {secs}s")
+
             df = fetch_ohlcv(symbol, tf)
             if df is None or len(df) < 5:
                 continue
@@ -92,14 +106,18 @@ if st.button("Run Screener"):
     result_container = result_placeholder.container()
     if not latest_df.empty:
         result_container.markdown("### 🟢 Cradle Setups (Latest Candle)")
-        result_container.dataframe(latest_df, use_container_width=True)
+        def highlight_cradle(row):
+            color = 'background-color: #003300' if row['Setup'] == 'Bullish' else 'background-color: #330000'
+            return [color] * len(row)
+        styled_latest = latest_df.style.apply(highlight_cradle, axis=1)
+        result_container.dataframe(styled_latest, use_container_width=True)
 
     if not previous_df.empty:
         result_container.markdown("### 🟡 Cradle Setups (Previous Candle)")
-        result_container.dataframe(previous_df, use_container_width=True)
+        styled_previous = previous_df.style.apply(highlight_cradle, axis=1)
+        result_container.dataframe(styled_previous, use_container_width=True)
 
     if latest_df.empty and previous_df.empty:
         result_container.warning("No valid Cradle setups found.")
 
     result_container.success("Scan complete!")
-

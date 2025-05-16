@@ -8,6 +8,11 @@ TIMEFRAMES = ['1m', '3m', '5m', '10m', '15m', '20m', '30m', '1h', '2h', '4h', '6
 BITGET = ccxt.bitget()
 
 # === HELPERS ===
+
+def highlight_cradle(row):
+    color = 'background-color: #003300' if row['Setup'] == 'Bullish' else 'background-color: #330000'
+    return [color] * len(row)
+
 def fetch_ohlcv(symbol, timeframe, limit=100):
     try:
         ohlcv = BITGET.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)

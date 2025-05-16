@@ -150,14 +150,7 @@ if st.button("Run Screener"):
 
         latest_df, previous_df = analyze_cradle_setups(symbols, selected_timeframes)
 
-    result_container = result_placeholder.container()
-    if not latest_df.empty:
-        result_container.markdown("### 🟢 Cradle Setups (Latest Candle)")
-        def highlight_cradle(row):
-    color = 'background-color: #003300' if row['Setup'] == 'Bullish' else 'background-color: #330000'
-    return [color] * len(row)
-        styled_latest = latest_df.style.apply(highlight_cradle, axis=1)
-        result_container.dataframe(styled_latest, use_container_width=True)
+    
 
     if not previous_df.empty:
         result_container.markdown("### 🟡 Cradle Setups (Previous Candle)")

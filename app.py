@@ -8,7 +8,6 @@ TIMEFRAMES = ['1m', '3m', '5m', '10m', '15m', '20m', '30m', '1h', '2h', '4h', '6
 BITGET = ccxt.bitget()
 
 # === HELPERS ===
-
 def highlight_cradle(row):
     color = 'background-color: #003300' if row['Setup'] == 'Bullish' else 'background-color: #330000'
     return [color] * len(row)
@@ -35,21 +34,17 @@ def check_cradle_setup(df, index):
     ema_zone_low = min(ema10.iloc[index - 1], ema20.iloc[index - 1])
     ema_zone_high = max(ema10.iloc[index - 1], ema20.iloc[index - 1])
 
-    # Bullish Cradle
     if prev['close'] < prev['open'] and ema_zone_low <= prev['close'] <= ema_zone_high and curr['close'] > curr['open']:
         return 'Bullish'
-    # Bearish Cradle
     if prev['close'] > prev['open'] and ema_zone_low <= prev['close'] <= ema_zone_high and curr['close'] < curr['open']:
         return 'Bearish'
     return None
 
 def analyze_cradle_setups(symbols, timeframes):
-    all_recent_setups = []
     all_previous_setups = []
-    result_container = st.container()
+    result_container = result_placeholder
 
     for tf in timeframes:
-        recent_setups = []
         previous_setups = []
         status_line = st.empty()
         progress_bar = st.progress(0)
@@ -72,16 +67,8 @@ def analyze_cradle_setups(symbols, timeframes):
             if df is None or len(df) < 5:
                 continue
 
-            setup_latest = check_cradle_setup(df, len(df) - 1)
             setup_previous = check_cradle_setup(df, len(df) - 2)
 
-            if setup_latest:
-                recent_setups.append({
-                    'Symbol': symbol,
-                    'Timeframe': tf,
-                    'Setup': setup_latest,
-                    'Detected On': 'Latest Candle'
-                })
             if setup_previous:
                 previous_setups.append({
                     'Symbol': symbol,
@@ -96,26 +83,21 @@ def analyze_cradle_setups(symbols, timeframes):
         tmin, tsec = divmod(int(elapsed_time), 60)
         time_taken_placeholder.success(f"✅ Finished scanning {tf} in {tmin}m {tsec}s")
 
-        if recent_setups:
-            result_container.markdown(f"### 🟢 Cradle Setups (Latest Candle) – {tf}")
-            styled_latest = pd.DataFrame(recent_setups).style.apply(highlight_cradle, axis=1)
-            result_container.dataframe(styled_latest, use_container_width=True)
         if previous_setups:
-            result_container.markdown(f"### 🟡 Cradle Setups (Previous Candle) – {tf}")
+            result_container.markdown(f"### 📈 Cradle Setups – {tf} (Last Closed Candle)")
             styled_previous = pd.DataFrame(previous_setups).style.apply(highlight_cradle, axis=1)
             result_container.dataframe(styled_previous, use_container_width=True)
 
-        all_recent_setups.extend(recent_setups)
         all_previous_setups.extend(previous_setups)
 
-    return pd.DataFrame(all_recent_setups), pd.DataFrame(all_previous_setups)
+    return pd.DataFrame(all_previous_setups)
 
 # === STREAMLIT UI ===
 st.set_page_config(layout="wide")
-st.title("📊 Cradle Strategy Screener (Last Two Candle Pairs)")
+st.title("📊 Cradle Screener")
 
 selected_timeframes = st.multiselect("Select Timeframes to Scan", TIMEFRAMES, default=['1h', '4h', '1d'])
-st.write("This screener shows valid Cradle setups detected on the last two candles.")
+st.write("This screener shows valid Cradle setups detected on the last fully closed candle only.")
 
 result_placeholder = st.empty()
 placeholder = st.empty()
@@ -152,18 +134,15 @@ if st.button("Run Screener"):
     with st.spinner("Scanning Bitget markets... Please wait..."):
         markets = BITGET.load_markets()
         symbols = [s for s in markets if '/USDT:USDT' in s and markets[s]['type'] == 'swap']
-
-        latest_df, previous_df = analyze_cradle_setups(symbols, selected_timeframes)
-
-    
+        previous_df = analyze_cradle_setups(symbols, selected_timeframes)
 
     if not previous_df.empty:
-        result_container.markdown("### 🟡 Cradle Setups (Previous Candle)")
+        result_placeholder.markdown("### 📈 Cradle Setups (Last Closed Candle)")
         styled_previous = previous_df.style.apply(highlight_cradle, axis=1)
-        result_container.dataframe(styled_previous, use_container_width=True)
+        result_placeholder.dataframe(styled_previous, use_container_width=True)
 
-    if latest_df.empty and previous_df.empty:
-        result_container.warning("No valid Cradle setups found.")
+    if previous_df.empty:
+        result_placeholder.warning("No valid Cradle setups found.")
 
-    result_container.success("Scan complete!")
+    result_placeholder.success("Scan complete!")
 

@@ -1,0 +1,96 @@
+import streamlit as st
+import pandas as pd
+import ccxt
+from datetime import datetime, timedelta
+
+# === Theme Toggle ===
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'dark'
+
+def switch_theme():
+    st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
+
+st.sidebar.button("Toggle Theme", on_click=switch_theme)
+
+# Apply theme styles
+if st.session_state.theme == 'dark':
+    background_color = '#111'
+    text_color = '#fff'
+    border_color = '#444'
+else:
+    background_color = '#fff'
+    text_color = '#000'
+    border_color = '#ccc'
+
+table_styles = {
+    'background-color': background_color,
+    'color': text_color,
+    'border': f'1px solid {border_color}'
+}
+
+# === Cradle Strategy Logic ===
+def fetch_ohlcv(symbol, timeframe, limit=50):
+    exchange = ccxt.bitget()
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+        df = pd.DataFrame(ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
+        df["timestamp"] = pd.to_datetime(df["timestamp"], unit='ms')
+        return df
+    except Exception as e:
+        return pd.DataFrame()
+
+def cradle_condition(df, use_previous=False):
+    i = -2 if use_previous else -1
+    if len(df) < abs(i):
+        return None
+
+    close = df["close"].values
+    open_ = df["open"].values
+    ema_10 = df["close"].ewm(span=10).mean()
+    ema_20 = df["close"].ewm(span=20).mean()
+
+    # Cradle logic: candle closes inside EMAs and EMAs in correct order
+    if close[i] > open_[i] and close[i] > ema_10[i] and close[i] < ema_20[i] and ema_10[i] > ema_20[i]:
+        return "Long"
+    elif close[i] < open_[i] and close[i] < ema_10[i] and close[i] > ema_20[i] and ema_10[i] < ema_20[i]:
+        return "Short"
+    return None
+
+def get_cradle_signals(use_previous_candle=False):
+    symbols = ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "XRP/USDT:USDT"]
+    timeframes = ["1h", "4h", "1d"]
+    results = []
+
+    for symbol in symbols:
+        for tf in timeframes:
+            df = fetch_ohlcv(symbol, tf)
+            if df.empty:
+                continue
+            signal = cradle_condition(df, use_previous=use_previous_candle)
+            if signal:
+                results.append({"Asset": symbol.split(":")[0], "Direction": signal, "Timeframe": tf})
+    return pd.DataFrame(results)
+
+# === Process and Display Results ===
+def show_results(df, title):
+    longs = df[df["Direction"] == "Long"]
+    shorts = df[df["Direction"] == "Short"]
+    sorted_df = pd.concat([longs, shorts])
+
+    st.markdown(f"""
+        <div style='background-color: {background_color}; color: {text_color}; padding: 10px; border-radius: 10px;'>
+            <h3>{title}</h3>
+        </div>
+    """, unsafe_allow_html=True)
+    st.dataframe(sorted_df.style.set_properties(**table_styles), use_container_width=True)
+
+# === Main Display ===
+st.title("Cradle Screener")
+
+# Current Candle Results
+current_signals = get_cradle_signals(use_previous_candle=False)
+show_results(current_signals, "Cradle Setups — Current Candle")
+
+# 2nd Last Candle Results
+previous_signals = get_cradle_signals(use_previous_candle=True)
+show_results(previous_signals, "Cradle Setups — 2nd Last Candle")
